@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zfmrf"
+version = "0.0.1"
+description = "Medical Imaginging Research structuring at KISPI"
+readme = "README.md"
+requires-python = ">=3.9.0"
+keywords = ["medical", "imaging", "mri", "ct", "dicom"]
+authors = [
+    { name = "Fraser M. Callaghan", email = "fraser.callaghan@kispi.uzh.ch" }
+]
+dependencies = [
+    "hurahura>=0.1.9",
+]
+
+[project.scripts]
+zfmrf_subject = "zfmrf.zfmrf_subject:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["zfmrf"] 
