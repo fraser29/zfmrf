@@ -13,7 +13,7 @@ authors = [
     { name = "Fraser M. Callaghan", email = "fraser.callaghan@kispi.uzh.ch" }
 ]
 dependencies = [
-    "hurahura>=0.1.9",
+    "hurahura>=0.1.11",
 ]
 
 [project.scripts]
