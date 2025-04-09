@@ -55,9 +55,6 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
     ### ----------------------------------------------------------------------------------------------------------------
     ### Methods
     ### ----------------------------------------------------------------------------------------------------------------
-    def getPhysiologicalDataDir(self):
-        return self._getDir(["RAW", "PHYSIOLOGICAL_DATA"])
-
 
     def moveToNewRoot(self, destinationRootDir):
         self.archiveSubject(destinationRootDir)
@@ -123,6 +120,10 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
     ### ----------------------------------------------------------------------------------------------------------------
     ### GATING
     ### ----------------------------------------------------------------------------------------------------------------
+    def getPhysiologicalDataDir(self):
+        return self._getDir(["RAW", "PHYSIOLOGICAL_DATA"])
+
+
     def copyGatingToStudy(self):
         """Will find the Physiology data appropriate for your study and copy to directory:
         self.getPhysiologicalDataDir() ==> SUBJID/RAW/PHYSIOLOGICAL_DATA
@@ -251,6 +252,39 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         return all(pdfFiles_tf)
 
 
+    ### ----------------------------------------------------------------------------------------------------------------
+    ### ARCHIVED DATA
+    ### ----------------------------------------------------------------------------------------------------------------
+    def getMRIDataFromArchive(self, archiveDir):
+        patientID = self.getTagValue("PatientID", ifNotFound=None)
+        if patientID is None:
+            raise ValueError(f"Patient ID not found for {self.subjID}")
+        
+        dos = self.getTagValue("StudyDate", ifNotFound=None)
+        examID = self.getTagValue("StudyID", ifNotFound=None)
+        if dos is None:
+            raise ValueError(f"StudyDate not found for {self.subjID}")
+        if examID is None:
+            raise ValueError(f"ExamID not found for {self.subjID}")
+        
+        remotePatientDir = None
+        for iSubDir in os.listdir(archiveDir):
+            if iSubDir.startswith(f"_{patientID}"):
+                remotePatientDir = os.path.join(archiveDir, iSubDir)
+        if remotePatientDir is None:
+            raise ValueError(f"Can not find remotePatientDir for {self.subjID} w patID: {patientID}")
+        possibleMatches = []
+        for iDir in os.listdir(remotePatientDir):
+            if (dos in iDir) and (examID in iDir):
+                possibleMatches.append(os.path.join(remotePatientDir, iDir))
+        for iArchive in possibleMatches:
+            self.logger.info(f"Loading DICOMS from {iArchive}")
+            dcmStudies = spydcmtk.dcmTK.ListOfDicomStudies.setFromInput(iArchive)
+            for iStudie in dcmStudies:
+                self.loadSpydcmStudyToSubject(iStudie)
+         
+         
+ 
     ### ----------------------------------------------------------------------------------------------------------------
     ### DTI / T1 - these are just examples for some basic functionality
     ### ----------------------------------------------------------------------------------------------------------------
