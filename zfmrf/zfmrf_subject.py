@@ -15,6 +15,7 @@ Adapted for general use.
 import os
 import shutil
 import datetime
+import subprocess
 ## 
 from hurahura import mi_subject, miresearch_main
 from hurahura.mi_config import MIResearch_config
@@ -45,6 +46,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
 
         self.physiology_data_dir = MIResearch_config.params['parameters'].get("physiology_data_dir", None)
         self.sage_data_dir = MIResearch_config.params['parameters'].get("sage_data_dir", None)
+        self.dicom_server_ip = MIResearch_config.params['parameters'].get("dicom_server_ip", None)
 
     ### ----------------------------------------------------------------------------------------------------------------
     ### Overriding methods
@@ -53,6 +55,10 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
     ### ----------------------------------------------------------------------------------------------------------------
     ### Methods
     ### ----------------------------------------------------------------------------------------------------------------
+    def getPhysiologicalDataDir(self):
+        return self._getDir(["RAW", "PHYSIOLOGICAL_DATA"])
+
+
     def moveToNewRoot(self, destinationRootDir):
         self.archiveSubject(destinationRootDir)
 
@@ -74,11 +80,53 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         return ss
 
 
+    ### ----------------------------------------------------------------------------------------------------------------
+    ### SEND TO DICOM SERVER
+    ### ----------------------------------------------------------------------------------------------------------------
+    def _sendDirectoryToAutorthanc(self, directoryToSend):
+        """Send a directory of DICOMS to ZfMRF instance of AUTORTHANC. 
+        Uses opensource package pourewa to connect and upload images to AUTORTHANC
+
+
+        Args:
+            directoryToSend (str): directory of DICOMS to send (e.g. your post-processed images)
+
+        Raises:
+            RuntimeError: If failure for the call to pourewa
+
+        Requires: 
+            self.dicom_server_ip: Should be set in conf file and read
+
+        Returns:
+            int: 0 for success, otherwise 1
+        """
+        if self.dicom_server_ip is not None:
+            if len(os.listdir(directoryToSend)) > 0:
+                cmd = f"pourewa -u {self.dicom_server_ip} -l {directoryToSend}"
+
+                self.logger.info(f"Uploading {self.subjID} to autorthanc")
+                try:
+                    self.logger.debug(f"Upload command: {cmd}")
+                    result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+                    self.logger.debug(f"Upload command output: {result.stdout}")
+                    return 0
+                except subprocess.CalledProcessError as e:
+                    self.logger.error(f"Failed to upload to autorthanc: {e}")
+                    self.logger.error(f"Command output: {e.stderr}")
+                    raise RuntimeError("Failed to upload DICOMs to autorthanc server") from e
+        else:
+            self.logger.error(f"DICOM server IP is {self.dicom_server_ip}")
+        return 1
+
+
 
     ### ----------------------------------------------------------------------------------------------------------------
     ### GATING
     ### ----------------------------------------------------------------------------------------------------------------
     def copyGatingToStudy(self):
+        """Will find the Physiology data appropriate for your study and copy to directory:
+        self.getPhysiologicalDataDir() ==> SUBJID/RAW/PHYSIOLOGICAL_DATA
+        """
         if self.physiology_data_dir is None:
             self.logger.error("physiology_data_dir is not set - set in config file")
             return
@@ -101,7 +149,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
             parts = iFile.split('_')
             fileDate = datetime.datetime.strptime(parts[-4]+parts[-3]+parts[-2], '%m%d%Y%H%M%S')
             if (fileDate < t2) and (fileDate > t1):
-                shutil.copy2(os.path.join(gatingDir, iFile), self.getMetaDir())
+                shutil.copy2(os.path.join(gatingDir, iFile), self.getPhysiologicalDataDir())
                 c0 += 1
         self.logger.info(f"Copied {c0} gating files to Meta directory")
     
@@ -159,6 +207,15 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
 
 
     def copySpectraToStudy(self, FORCE=False):
+        """Find spectra data matching this study and copy to:
+        self.getSpectraDir() ==> SUBJID/RAW/SPECTRA
+
+        Args:
+            FORCE (bool, optional): Should copy if already present. Defaults to False.
+
+        Returns:
+            int: 0 for success else 1
+        """
         if (not FORCE) and self.hasSpectra():
             return 0
         if self.sage_data_dir is None:
