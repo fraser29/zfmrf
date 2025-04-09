@@ -283,7 +283,6 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
             for iStudie in dcmStudies:
                 self.loadSpydcmStudyToSubject(iStudie)
          
-         
  
     ### ----------------------------------------------------------------------------------------------------------------
     ### DTI / T1 - these are just examples for some basic functionality
