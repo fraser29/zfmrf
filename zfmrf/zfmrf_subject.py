@@ -256,6 +256,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
     ### ARCHIVED DATA
     ### ----------------------------------------------------------------------------------------------------------------
     def getMRIDataFromArchive(self, archiveDir):
+        self.logger.debug(f"Getting MRI archive data for {self.subjID} from {archiveDir} ")
         patientID = self.getTagValue("PatientID", ifNotFound=None)
         if patientID is None:
             raise ValueError(f"Patient ID not found for {self.subjID}")
@@ -277,6 +278,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         for iDir in os.listdir(remotePatientDir):
             if (dos in iDir) and (examID in iDir):
                 possibleMatches.append(os.path.join(remotePatientDir, iDir))
+        self.logger.debug(f"Found {len(possibleMatches)} archive to load from")
         for iArchive in possibleMatches:
             self.logger.info(f"Loading DICOMS from {iArchive}")
             dcmStudies = spydcmtk.dcmTK.ListOfDicomStudies.setFromInput(iArchive)
@@ -332,37 +334,41 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
 #      THIS IS ZFMRF SPECIFIC COMMAND LINE ACTIONS
 ### ====================================================================================================================
 def zfmrf_specific_actions(args):
+    subjList = mi_subject.SubjectList([args.MISubjClass(sn, args.dataRoot, args.subjPrefix, suffix=args.subjSuffix) for sn in args.subjNList])
+    if args.DEBUG: 
+        for iSubj in subjList:
+            iSubj.logger.setLevel("DEBUG")
+
+
     if args.qName is not None: 
-        for sn in args.subjNList:
-            iSubj = args.MISubjClass(sn, args.dataRoot, args.subjPrefix, suffix=args.subjSuffix)
-            if iSubj.exists():
-                if args.qName.lower() in iSubj.getName().lower():
-                    print(f"{args.qName} = {iSubj}")
+        subjList.reduceToExist()
+        for iSubj in subjList:
+            if args.qName.lower() in iSubj.getName().lower():
+                print(f"{args.qName} = {iSubj}")
 
     elif args.cpGating:
-        for sn in args.subjNList:
-            iSubj = args.MISubjClass(sn, args.dataRoot, args.subjPrefix, suffix=args.subjSuffix)
-            if iSubj.exists():
-                if args.DEBUG:
-                    print(f"Copy gating: {iSubj.subjID}...")
-                iSubj.copyGatingToStudy()
+        subjList.reduceToExist()
+        for iSubj in subjList:
+            iSubj.copyGatingToStudy()
 
     elif args.cpSpectra:
-        for sn in args.subjNList:
-            iSubj = args.MISubjClass(sn, args.dataRoot, args.subjPrefix, suffix=args.subjSuffix)
-            if iSubj.exists():
-                if args.DEBUG:
-                    print(f"Copy spectra: {iSubj.subjID}...")
-                iSubj.copySpectraToStudy()
+        subjList.reduceToExist()
+        for iSubj in subjList:
+            iSubj.copySpectraToStudy()
 
     elif args.pTags:
-        for sn in args.subjNList:
-            iSubj = args.MISubjClass(sn, args.dataRoot, args.subjPrefix, suffix=args.subjSuffix)
-            if iSubj.exists():
-                tags = iSubj.getMetaDict()
-                tags.pop("Series")
-                for ikey in sorted(tags.keys()):
-                    print(f"{ikey} = {tags[ikey]}")
+        subjList.reduceToExist()
+        for iSubj in subjList:
+            tags = iSubj.getMetaDict()
+            tags.pop("Series")
+            for ikey in sorted(tags.keys()):
+                print(f"{ikey} = {tags[ikey]}")
+
+    elif args.pullDicomsFromRemote is not None:
+        subjList.reduceToExist()
+        for iSubj in subjList:
+            iSubj.getMRIDataFromArchive()
+        
 
 ### ====================================================================================================================
 ### ====================================================================================================================
@@ -377,6 +383,8 @@ def getArgGroup():
     groupZfmrf.add_argument('-pTags', dest='pTags', help='Print Tags (except series)', action='store_true')
     groupZfmrf.add_argument('-cpGating', dest='cpGating', help='Copy gating data to study', action='store_true')
     groupZfmrf.add_argument('-cpSpectra', dest='cpSpectra', help='Copy spectra data to study', action='store_true')
+    groupZfmrf.add_argument('-pullDICOMS', dest='pullDicomsFromRemote', 
+                            help='Pull DICOMS from remote archive - give archive directory', type=str, default=None)
     return groupZfmrf
     ##
 
