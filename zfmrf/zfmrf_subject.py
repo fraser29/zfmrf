@@ -367,7 +367,7 @@ def zfmrf_specific_actions(args):
     elif args.pullDicomsFromRemote is not None:
         subjList.reduceToExist()
         for iSubj in subjList:
-            iSubj.getMRIDataFromArchive()
+            iSubj.getMRIDataFromArchive(args.pullDicomsFromRemote)
         
 
 ### ====================================================================================================================
