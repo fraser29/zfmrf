@@ -80,7 +80,11 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
     ### ----------------------------------------------------------------------------------------------------------------
     ### SEND TO DICOM SERVER
     ### ----------------------------------------------------------------------------------------------------------------
-    def _sendDirectoryToAutorthanc(self, directoryToSend):
+    def _sendDirectoryToAutorthanc(self, directoryToSend):    
+        print(f"WARNING: _sendDirectoryToAutorthanc is deprecated - use sendDirectoryToAutorthanc instead")
+        return self.sendDirectoryToAutorthanc(directoryToSend)
+        
+    def sendDirectoryToAutorthanc(self, directoryToSend):
         """Send a directory of DICOMS to ZfMRF instance of AUTORTHANC. 
         Uses opensource package pourewa to connect and upload images to AUTORTHANC
 
