@@ -152,7 +152,9 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         c0 = 0
         for iFile in gatingFiles:
             parts = iFile.split('_')
-            fileDate = datetime.datetime.strptime(parts[-4]+parts[-3]+parts[-2], '%m%d%Y%H%M%S')
+            dos = parts[-4][:8]
+            HH = parts[-4][-2:]
+            fileDate = datetime.datetime.strptime(dos+HH+parts[-3]+parts[-2], '%m%d%Y%H%M%S')
             if (fileDate < t2) and (fileDate > t1):
                 shutil.copy2(os.path.join(gatingDir, iFile), self.getPhysiologicalDataDir())
                 c0 += 1
