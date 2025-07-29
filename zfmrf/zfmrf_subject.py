@@ -152,9 +152,17 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         c0 = 0
         for iFile in gatingFiles:
             parts = iFile.split('_')
-            dos = parts[-4][:8]
-            HH = parts[-4][-2:]
-            fileDate = datetime.datetime.strptime(dos+HH+parts[-3]+parts[-2], '%m%d%Y%H%M%S')
+            if iFile.startswith('SPU'):
+                dos = parts[1][:8]
+                HH = parts[1][-2:]
+            else:
+                dos = parts[-4][:8]
+                HH = parts[-4][-2:]
+            try:
+                fileDate = datetime.datetime.strptime(dos+HH+parts[-3]+parts[-2], '%m%d%Y%H%M%S')
+            except ValueError:
+                self.logger.warning(f"Could not parse date from {iFile}")
+                continue
             if (fileDate < t2) and (fileDate > t1):
                 shutil.copy2(os.path.join(gatingDir, iFile), self.getPhysiologicalDataDir())
                 c0 += 1
