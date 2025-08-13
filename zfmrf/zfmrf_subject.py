@@ -166,7 +166,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         return self._getDir(["RAW", "PHYSIOLOGICAL_DATA"])
 
 
-    @mi_subject.ui_method(description="Copy gating data to study", category="ZFMRF", order=1)
+    @mi_subject.ui_method(description="Copy gating data to study", category="ZFMRF", order=10)
     def copyGatingToStudy(self):
         """Will find the Physiology data appropriate for your study and copy to directory:
         self.getPhysiologicalDataDir() ==> SUBJID/RAW/PHYSIOLOGICAL_DATA
@@ -263,7 +263,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         return None # We failed to find any sage directory matching this study. 
 
 
-    @mi_subject.ui_method(description="Copy spectra data to study", category="ZFMRF", order=1)
+    @mi_subject.ui_method(description="Copy spectra data to study", category="ZFMRF", order=10)
     def copySpectraToStudy(self, FORCE=False):
         """Find spectra data matching this study and copy to:
         self.getSpectraDir() ==> SUBJID/RAW/SPECTRA
