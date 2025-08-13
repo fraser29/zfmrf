@@ -209,6 +209,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
                 shutil.copy2(os.path.join(gatingDir, iFile), self.getPhysiologicalDataDir())
                 c0 += 1
         self.logger.info(f"Copied {c0} gating files to Meta directory")
+        return 0
     
 
     ### ----------------------------------------------------------------------------------------------------------------
