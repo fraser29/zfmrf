@@ -13,6 +13,7 @@ Adapted for general use.
 
 
 import os
+import csv
 import shutil
 import datetime
 import subprocess
@@ -27,6 +28,19 @@ from ngawari import fIO
 # ====================================================================================================
 nameUnknown = 'NAME-Unknown'
 
+
+
+def run_command(cmd):
+    result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return result.stdout
+
+def parse_csv_from_output(output, start_header="SubjectID"):
+    """Parses CSV part of output starting from a known header line"""
+    lines = output.strip().splitlines()
+    header_index = next(i for i, line in enumerate(lines) if start_header in line)
+    csv_lines = lines[header_index:]
+    reader = csv.DictReader(csv_lines)
+    return list(reader)
 
 # ====================================================================================================
 #       ABSTRACT SUBJECT CLASS
@@ -75,6 +89,30 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
             dbExamID = self.getTagValue('StudyID')
             ss = f"{ss}_{str(dbExamID)}"
         return ss
+
+    ### ----------------------------------------------------------------------------------------------------------------
+    def getNumberOfDICOMS_Autorthanc(self):
+        """Get the number of DICOMS in the Autorthanc server.
+        """
+        if self.dicom_server_ip is None:
+            raise ValueError("DICOM server IP is not set - set in config file")
+        thisStudyInstanceUID = self.getTagValue('StudyInstanceUID')
+        cmd = f"pourewa -u {self.dicom_server_ip} -tag StudyInstanceUID {thisStudyInstanceUID}"
+        output = run_command(cmd)
+        data = parse_csv_from_output(output, start_header="SubjectID")
+        result_dict = {row['StudyInstanceUID']: row for row in data}
+        if thisStudyInstanceUID in result_dict:
+            return result_dict[thisStudyInstanceUID]['NumberOfDICOMS']
+        else:
+            return 0
+
+    @mi_subject.ui_method(description="Check if the number of DICOMS in the subject directory and the number of DICOMS in the Autorthanc server are equal", category="ZFMRF", order=1)
+    def isNumberOfDICOMS_vs_Autorthanc_equal(self):
+        """Check the number of DICOMS in the subject directory and the number of DICOMS in the Autorthanc server.
+        """
+        numDICOMS_autorthanc = self.getNumberOfDICOMS_Autorthanc()
+        numDICOMS_local = self.countNumberOfDicoms()
+        return numDICOMS_local == numDICOMS_autorthanc
 
 
     ### ----------------------------------------------------------------------------------------------------------------
@@ -128,12 +166,16 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         return self._getDir(["RAW", "PHYSIOLOGICAL_DATA"])
 
 
+    @mi_subject.ui_method(description="Copy gating data to study", category="ZFMRF", order=2)
     def copyGatingToStudy(self):
         """Will find the Physiology data appropriate for your study and copy to directory:
         self.getPhysiologicalDataDir() ==> SUBJID/RAW/PHYSIOLOGICAL_DATA
         """
         if self.physiology_data_dir is None:
             self.logger.error("physiology_data_dir is not set - set in config file")
+            return
+        if not os.path.isdir(self.physiology_data_dir):
+            self.logger.error(f"physiology_data_dir is not a directory: {self.physiology_data_dir}")
             return
         stationName = self.getTagValue("StationName")
         if "3" in self.getTagValue("MagneticFieldStrength"):
@@ -348,7 +390,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
 #      THIS IS ZFMRF SPECIFIC COMMAND LINE ACTIONS
 ### ====================================================================================================================
 def zfmrf_specific_actions(args):
-    subjList = mi_subject.SubjectList([args.MISubjClass(sn, args.dataRoot, args.subjPrefix, suffix=args.subjSuffix) for sn in args.subjNList])
+    subjList = mi_subject.SubjectList([MIResearch_config.class_obj(sn, MIResearch_config.data_root_dir, MIResearch_config.subject_prefix, suffix=args.subjSuffix) for sn in args.subjNList])
     if args.DEBUG: 
         for iSubj in subjList:
             iSubj.logger.setLevel("DEBUG")
