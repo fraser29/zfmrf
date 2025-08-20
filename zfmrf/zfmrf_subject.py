@@ -166,6 +166,10 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         return self._getDir(["RAW", "PHYSIOLOGICAL_DATA"])
 
 
+    def hasPhysiologicalGating(self):
+        return len(os.listdir(self.getPhysiologicalDataDir())) > 0
+    
+
     @mi_subject.ui_method(description="Copy gating data to study", category="ZFMRF", order=10)
     def copyGatingToStudy(self):
         """Will find the Physiology data appropriate for your study and copy to directory:
