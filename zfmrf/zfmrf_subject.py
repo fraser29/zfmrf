@@ -171,23 +171,24 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
     
 
     @mi_subject.ui_method(description="Copy gating data to study", category="ZFMRF", order=10)
-    def copyGatingToStudy(self):
+    def copyGatingToStudy(self, gatingDir=None):
         """Will find the Physiology data appropriate for your study and copy to directory:
         self.getPhysiologicalDataDir() ==> SUBJID/RAW/PHYSIOLOGICAL_DATA
         """
-        if self.physiology_data_dir is None:
-            self.logger.error("physiology_data_dir is not set - set in config file")
-            return
-        if not os.path.isdir(self.physiology_data_dir):
-            self.logger.error(f"physiology_data_dir is not a directory: {self.physiology_data_dir}")
-            return
-        stationName = self.getTagValue("StationName")
-        if "3" in self.getTagValue("MagneticFieldStrength"):
-            gatingDir = os.path.join(self.physiology_data_dir, stationName, 'gating')
-        else:
-            gatingDir = os.path.join(self.physiology_data_dir, stationName, 'gating')
-        if not os.path.isdir(gatingDir):
-            self.logger.error("Gating backup directory not accessible")
+        if gatingDir is None:
+            if self.physiology_data_dir is None:
+                self.logger.error("physiology_data_dir is not set - set in config file")
+                return
+            if not os.path.isdir(self.physiology_data_dir):
+                self.logger.error(f"physiology_data_dir is not a directory: {self.physiology_data_dir}")
+                return
+            stationName = self.getTagValue("StationName")
+            if "3" in self.getTagValue("MagneticFieldStrength"):
+                gatingDir = os.path.join(self.physiology_data_dir, stationName, 'gating')
+            else:
+                gatingDir = os.path.join(self.physiology_data_dir, stationName, 'gating')
+        if (gatingDir is None) or (not os.path.isdir(gatingDir)):
+            self.logger.error(f"Gating backup directory not accessible: {gatingDir}")
             return
         tStart, tEnd = self.getStartTime_EndTimeOfExam()
         tStart, tEnd = str(tStart), str(tEnd)
