@@ -202,11 +202,13 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
             if iFile.startswith('SPU'):
                 dos = parts[1][:8]
                 HH = parts[1][-2:]
+                fileDateStr = dos+HH+parts[2]+parts[3]
             else:
                 dos = parts[-4][:8]
                 HH = parts[-4][-2:]
+                fileDateStr = dos+HH+parts[-3]+parts[-2]
             try:
-                fileDate = datetime.datetime.strptime(dos+HH+parts[-3]+parts[-2], '%m%d%Y%H%M%S')
+                fileDate = datetime.datetime.strptime(fileDateStr, '%m%d%Y%H%M%S')
             except ValueError:
                 self.logger.warning(f"Could not parse date from {iFile}")
                 continue
