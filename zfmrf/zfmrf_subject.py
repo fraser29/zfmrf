@@ -215,7 +215,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
             if (fileDate < t2) and (fileDate > t1):
                 shutil.copy2(os.path.join(gatingDir, iFile), self.getPhysiologicalDataDir())
                 c0 += 1
-        self.logger.info(f"Copied {c0} gating files to Meta directory")
+        self.logger.info(f"Copied {c0} gating files to RAW/PHYSIOLOGICAL_DATA directory")
         return 0
     
 
