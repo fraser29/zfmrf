@@ -55,8 +55,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
                         suffix="") -> None:
         mi_subject.AbstractSubject.__init__(self, subjectNumber=subjectNumber,
                                             dataRoot=dataRoot,
-                                            subjectPrefix=subjectPrefix, 
-                                            suffix=suffix)
+                                            subjectPrefix=subjectPrefix)
 
         self.physiology_data_dir = MIResearch_config.params['parameters'].get("physiology_data_dir", None)
         self.sage_data_dir = MIResearch_config.params['parameters'].get("sage_data_dir", None)
@@ -399,7 +398,10 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
 #      THIS IS ZFMRF SPECIFIC COMMAND LINE ACTIONS
 ### ====================================================================================================================
 def zfmrf_specific_actions(args):
-    subjList = mi_subject.SubjectList([MIResearch_config.class_obj(sn, MIResearch_config.data_root_dir, MIResearch_config.subject_prefix, suffix=args.subjSuffix) for sn in args.subjNList])
+    try:
+        subjList = mi_subject.SubjectList([MIResearch_config.class_obj(sn, MIResearch_config.data_root_dir, MIResearch_config.subject_prefix, suffix=args.subjSuffix) for sn in args.subjNList])
+    except TypeError:
+        subjList = mi_subject.SubjectList([MIResearch_config.class_obj(sn, MIResearch_config.data_root_dir, MIResearch_config.subject_prefix) for sn in args.subjNList])
     if args.DEBUG: 
         for iSubj in subjList:
             iSubj.logger.setLevel("DEBUG")
