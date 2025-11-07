@@ -436,6 +436,11 @@ def zfmrf_specific_actions(args):
         for iSubj in subjList:
             iSubj.getMRIDataFromArchive(args.pullDicomsFromRemote)
         
+    elif args.delData:
+        subjList.reduceToExist()
+        for iSubj in subjList:
+            iSubj.delteAllButMeta()
+        
 
 ### ====================================================================================================================
 ### ====================================================================================================================
@@ -450,6 +455,7 @@ def getArgGroup():
     groupZfmrf.add_argument('-pTags', dest='pTags', help='Print Tags (except series)', action='store_true')
     groupZfmrf.add_argument('-cpGating', dest='cpGating', help='Copy gating data to study', action='store_true')
     groupZfmrf.add_argument('-cpSpectra', dest='cpSpectra', help='Copy spectra data to study', action='store_true')
+    groupZfmrf.add_argument('-DEL', dest='delData', help='Delete all but META', action='store_true')
     groupZfmrf.add_argument('-pullDICOMS', dest='pullDicomsFromRemote', 
                             help='Pull DICOMS from remote archive - give archive directory', type=str, default=None)
     return groupZfmrf
