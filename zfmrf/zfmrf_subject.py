@@ -183,10 +183,14 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
                 return
             stationName = self.getTagValue("StationName")
             gatingDir = os.path.join(self.physiology_data_dir, stationName, 'gating')
-            self.copyGatingToStudy(gatingDir=gatingDir)
-            gatingDir = os.path.join(self.physiology_data_dir, stationName, 'PhysioArchive')
-            return self.copyGatingToStudy(gatingDir=gatingDir)
+            self.copyGatingToStudy_OLD(gatingDir=gatingDir)
+            physioArchiveDir = os.path.join(self.physiology_data_dir, stationName, 'PhysioArchive')
+            return self.copyGatingToStudy_PhysioArchive(physioArchiveDir=physioArchiveDir)
         ##
+        return self.copyGatingToStudy_OLD(gatingDir=gatingDir)
+
+
+    def copyGatingToStudy_OLD(self, gatingDir):
         if (gatingDir is None) or (not os.path.isdir(gatingDir)):
             self.logger.error(f"Gating backup directory not accessible: {gatingDir}")
             return
@@ -218,6 +222,32 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         self.logger.info(f"Copied {c0} gating files to RAW/PHYSIOLOGICAL_DATA directory")
         return 0
     
+
+    def copyGatingToStudy_PhysioArchive(self, physioArchiveDir):
+        """Will find the Physiology data appropriate for your study and copy to directory:
+        self.getPhysiologicalDataDir() ==> SUBJID/RAW/PHYSIOLOGICAL_DATA
+        """
+        if not os.path.isdir(physioArchiveDir):
+            self.logger.error("PhysioArchive directory not accessible")
+            return
+        tStart, tEnd = self.getStartTime_EndTimeOfExam()
+        tStart, tEnd = str(tStart), str(tEnd)
+        doScan = self.getMetaDict()['StudyDate']
+        t1 = datetime.datetime.strptime(str(doScan+tStart), '%Y%m%d%H%M%S')
+        t2 = datetime.datetime.strptime(str(doScan+tEnd), '%Y%m%d%H%M%S')
+        c0 = 0
+        for iFile in os.listdir(physioArchiveDir):
+            parts = iFile.split('_')
+            try:
+                fileDate = datetime.datetime.strptime(parts[2]+parts[3][:6], '%Y%m%d%H%M%S')
+            except ValueError:
+                continue # File not in format we expect so skip
+            if (fileDate < t2) and (fileDate > t1):
+                shutil.copy2(os.path.join(physioArchiveDir, iFile), self.getPhysiologicalDataDir())
+                c0 += 1
+        self.logger.info(f"Copied {c0} gating files to Meta directory")
+        return 0
+
 
     ### ----------------------------------------------------------------------------------------------------------------
     ### SPECTRA
