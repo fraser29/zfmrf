@@ -219,7 +219,8 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
             if (fileDate < t2) and (fileDate > t1):
                 shutil.copy2(os.path.join(gatingDir, iFile), self.getPhysiologicalDataDir())
                 c0 += 1
-        self.logger.info(f"Copied {c0} gating files to RAW/PHYSIOLOGICAL_DATA directory")
+        self.logger.debug(f"Searched {gatingDir} for gating files between {t1.strftime('%Y%m%d%H%M%S')} and {t2.strftime('%Y%m%d%H%M%S')}")
+        self.logger.info(f"Copied {c0} gating files (OLD FORMAT) to RAW/PHYSIOLOGICAL_DATA directory")
         return 0
     
 
@@ -245,7 +246,8 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
             if (fileDate < t2) and (fileDate > t1):
                 shutil.copy2(os.path.join(physioArchiveDir, iFile), self.getPhysiologicalDataDir())
                 c0 += 1
-        self.logger.info(f"Copied {c0} gating files to Meta directory")
+        self.logger.debug(f"Searched {physioArchiveDir} for gating files between {t1.strftime('%Y%m%d%H%M%S')} and {t2.strftime('%Y%m%d%H%M%S')}")
+        self.logger.info(f"Copied {c0} gating files to RAW/PHYSIOLOGICAL_DATA directory")
         return 0
 
 
