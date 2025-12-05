@@ -174,7 +174,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         """Will find the Physiology data appropriate for your study and copy to directory:
         self.getPhysiologicalDataDir() ==> SUBJID/RAW/PHYSIOLOGICAL_DATA
         """
-        if gatingDir is None:
+        if gatingDir is None: # None passed - check gating AND PyhsioArchive directories
             if self.physiology_data_dir is None:
                 self.logger.error("physiology_data_dir is not set - set in config file")
                 return
@@ -182,10 +182,11 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
                 self.logger.error(f"physiology_data_dir is not a directory: {self.physiology_data_dir}")
                 return
             stationName = self.getTagValue("StationName")
-            if "3" in self.getTagValue("MagneticFieldStrength"):
-                gatingDir = os.path.join(self.physiology_data_dir, stationName, 'gating')
-            else:
-                gatingDir = os.path.join(self.physiology_data_dir, stationName, 'gating')
+            gatingDir = os.path.join(self.physiology_data_dir, stationName, 'gating')
+            self.copyGatingToStudy(gatingDir=gatingDir)
+            gatingDir = os.path.join(self.physiology_data_dir, stationName, 'PhysioArchive')
+            return self.copyGatingToStudy(gatingDir=gatingDir)
+        ##
         if (gatingDir is None) or (not os.path.isdir(gatingDir)):
             self.logger.error(f"Gating backup directory not accessible: {gatingDir}")
             return
@@ -410,36 +411,60 @@ def zfmrf_specific_actions(args):
     if args.qName is not None: 
         subjList.reduceToExist()
         for iSubj in subjList:
-            if args.qName.lower() in iSubj.getName().lower():
-                print(f"{args.qName} = {iSubj}")
+            try:
+                if args.qName.lower() in iSubj.getName().lower():
+                    print(f"{args.qName} = {iSubj}")
+            except Exception as e:
+                continue
+
 
     elif args.cpGating:
         subjList.reduceToExist()
         for iSubj in subjList:
-            iSubj.copyGatingToStudy()
+            try:
+                iSubj.copyGatingToStudy()   
+            except Exception as e:
+                print(f"Error copying gating to study for {iSubj}: {e}")
+                continue
 
     elif args.cpSpectra:
         subjList.reduceToExist()
         for iSubj in subjList:
-            iSubj.copySpectraToStudy()
+            try:
+                iSubj.copySpectraToStudy()
+            except Exception as e:
+                print(f"Error copying spectra to study for {iSubj}: {e}")
+                continue
 
     elif args.pTags:
         subjList.reduceToExist()
         for iSubj in subjList:
-            tags = iSubj.getMetaDict()
-            tags.pop("Series")
-            for ikey in sorted(tags.keys()):
-                print(f"{ikey} = {tags[ikey]}")
+            try:
+                tags = iSubj.getMetaDict()
+                tags.pop("Series")
+                for ikey in sorted(tags.keys()):
+                    print(f"{ikey} = {tags[ikey]}")
+                print("")
+            except Exception as e:
+                continue
 
     elif args.pullDicomsFromRemote is not None:
         subjList.reduceToExist()
         for iSubj in subjList:
-            iSubj.getMRIDataFromArchive(args.pullDicomsFromRemote)
+            try:
+                iSubj.getMRIDataFromArchive(args.pullDicomsFromRemote)
+            except Exception as e:
+                print(f"Error pulling DICOMS from remote archive for {iSubj}: {e}")
+                continue
         
     elif args.delData:
         subjList.reduceToExist()
         for iSubj in subjList:
-            iSubj.delteAllButMeta()
+            try:
+                iSubj.delteAllButMeta()
+            except Exception as e:
+                print(f"Error deleting all but meta for {iSubj}: {e}")
+                continue
         
 
 ### ====================================================================================================================
