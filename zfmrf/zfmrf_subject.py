@@ -105,7 +105,6 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         else:
             return 0
 
-    @mi_subject.ui_method(description="Check if the number of DICOMS in the subject directory and the number of DICOMS in the Autorthanc server are equal", category="ZFMRF", order=1)
     def isNumberOfDICOMS_vs_Autorthanc_equal(self):
         """Check the number of DICOMS in the subject directory and the number of DICOMS in the Autorthanc server.
         """
