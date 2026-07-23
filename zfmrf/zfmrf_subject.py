@@ -234,7 +234,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         tStart, tEnd = str(tStart), str(tEnd)
         doScan = self.getMetaDict()['StudyDate']
         t1 = datetime.datetime.strptime(str(doScan+tStart), '%Y%m%d%H%M%S')
-        t2 = datetime.datetime.strptime(str(doScan+tEnd), '%Y%m%d%H%M%S')
+        t2 = datetime.datetime.strptime(str(doScan+tEnd), '%Y%m%d%H%M%S') + datetime.timedelta(hours=1)
         c0 = 0
         for iFile in os.listdir(physioArchiveDir):
             parts = iFile.split('_')
