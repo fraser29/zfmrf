@@ -21,6 +21,9 @@ ZfMRFSubject is a subclass of hurahura.mi_subject.AbstractSubject. One should su
 
 ## Changelog
 
+### 0.0.15
+- Add extra hour to search for physiological archive files
+
 ### 0.0.8
 - Added support for SPU gating files
 
