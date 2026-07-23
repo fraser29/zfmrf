@@ -10,6 +10,9 @@ This is a generic package for managing projects in the ZfMRF lab.
 git clone https://github.com/fraser29/zfmrf.git
 cd zfmrf
 pip install -e .
+
+# or 
+pip install --upgrade git+https://github.com/fraser29/zfmrf.git
 ```
 
 ## Usage
