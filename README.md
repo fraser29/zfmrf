@@ -23,6 +23,9 @@ ZfMRFSubject is a subclass of hurahura.mi_subject.AbstractSubject. One should su
 
 ## Changelog
 
+### 0.0.18
+- Catch subprocess errors when extracting physiological signals
+
 ### 0.0.17
 - Send exceptions to logger instead of print
 

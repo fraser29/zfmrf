@@ -284,9 +284,11 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
                         "--start_time", scan_start_time_str, 
                         "--end_time", scan_end_time_str]
                 self.logger.info(f"Extracting heart signal from {iFile} using command: {' '.join(cmd)}")
-                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-                if result.returncode != 0:
-                    self.logger.error(f"Failed to extract heart signal from {iFile}: {result.stderr}")
+                try:
+                    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+                except subprocess.CalledProcessError as e:
+                    # Expect this as pulling extra archive files - but scan timing may not match
+                    self.logger.error(f"Failed to extract heart signal from {iFile}: {e.stderr}")
                     continue
                 self.logger.info(f"Extracted heart signal from {iFile} to {output_json_temp}")
                 output_jsons.append(output_json_temp)
