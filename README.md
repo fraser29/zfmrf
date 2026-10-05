@@ -21,8 +21,10 @@ This package is designed to be used with the [hurahura](https://github.com/frase
 
 ZfMRFSubject is a subclass of hurahura.mi_subject.AbstractSubject. One should subclass this class to create a new subject class to take advantage of the ZfMRF specific methods.
 
-
 ## Changelog
+
+### 0.0.16
+- Added method to extract physiological signals from PhysioArchive files
 
 ### 0.0.15
 - Add extra hour to search for physiological archive files

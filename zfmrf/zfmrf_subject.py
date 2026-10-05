@@ -18,7 +18,7 @@ import shutil
 import datetime
 import subprocess
 ## 
-from hurahura import mi_subject, miresearch_main
+from hurahura import mi_subject, miresearch_main, mi_utils
 from hurahura.mi_config import MIResearch_config
 import spydcmtk
 from ngawari import fIO
@@ -60,6 +60,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         self.physiology_data_dir = MIResearch_config.params['parameters'].get("physiology_data_dir", None)
         self.sage_data_dir = MIResearch_config.params['parameters'].get("sage_data_dir", None)
         self.dicom_server_ip = MIResearch_config.params['parameters'].get("dicom_server_ip", None)
+        self.physio_extract_bin = MIResearch_config.params['parameters'].get("physio_extract_binary", None)
 
     ### ----------------------------------------------------------------------------------------------------------------
     ### Overriding methods
@@ -233,7 +234,7 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         tStart, tEnd = self.getStartTime_EndTimeOfExam()
         tStart, tEnd = str(tStart), str(tEnd)
         doScan = self.getMetaDict()['StudyDate']
-        t1 = datetime.datetime.strptime(str(doScan+tStart), '%Y%m%d%H%M%S')
+        t1 = datetime.datetime.strptime(str(doScan+tStart), '%Y%m%d%H%M%S') - datetime.timedelta(hours=1)
         t2 = datetime.datetime.strptime(str(doScan+tEnd), '%Y%m%d%H%M%S') + datetime.timedelta(hours=1)
         c0 = 0
         for iFile in os.listdir(physioArchiveDir):
@@ -248,6 +249,100 @@ class ZfMRFSubject(mi_subject.AbstractSubject):
         self.logger.debug(f"Searched {physioArchiveDir} for gating files between {t1.strftime('%Y%m%d%H%M%S')} and {t2.strftime('%Y%m%d%H%M%S')}")
         self.logger.info(f"Copied {c0} gating files to RAW/PHYSIOLOGICAL_DATA directory")
         return 0
+
+
+    def getPhysiologicalSignalJsonFile(self):
+        return os.path.join(self.getPhysiologicalDataDir(), f"{self.subjID}_PhysiologicalSignal.json")
+
+
+    def extractPhysioArchiveSignal(self, FORCE=False): 
+        """ 
+        Will look for PhysioArchive files and extract the phyiological signals to JSON.
+            Will only include time period of the scan.  
+            If multiple files are found will join in to single output. 
+            Will write to json file: RAW/PHYSIOLOGICAL_DATA/{self.subjID}_PhysiologicalSignal.json 
+                with keys: ['datetime', 'ecg2_raw', 'ecg3_raw', 'ppg_raw', 'resp_raw']
+        """
+        jsonOut = self.getPhysiologicalSignalJsonFile()
+        if (not FORCE) and os.path.isfile(jsonOut):
+            print(f"Physiological signal already extracted for {self.subjID} - use FORCE=True to re-extract")
+            return 0
+        if self.physio_extract_bin is None:
+            self.logger.error("physio_extract_binary is not set - set in config file")
+            return
+        physio_archive_dir = self.getPhysiologicalDataDir()
+        scan_start_time, scan_end_time = self.getStartTime_EndTimeOfExam(RETURN_DATETIME=True)
+        output_jsons = []
+        scan_start_time_str = scan_start_time.strftime('%H:%M:%S')
+        scan_end_time_str = scan_end_time.strftime('%H:%M:%S')
+        for iFile in os.listdir(physio_archive_dir):
+            if iFile.endswith(".h5"):
+                output_json_temp = os.path.join(physio_archive_dir, iFile.replace('.h5', '.json'))
+                cmd = [self.physio_extract_bin, 
+                        "-i", os.path.join(physio_archive_dir, iFile), 
+                        "-o", output_json_temp, 
+                        "--start_time", scan_start_time_str, 
+                        "--end_time", scan_end_time_str]
+                self.logger.info(f"Extracting heart signal from {iFile} using command: {' '.join(cmd)}")
+                result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+                if result.returncode != 0:
+                    self.logger.error(f"Failed to extract heart signal from {iFile}: {result.stderr}")
+                    continue
+                self.logger.info(f"Extracted heart signal from {iFile} to {output_json_temp}")
+                output_jsons.append(output_json_temp)
+        nOutputJsons = len(output_jsons)
+        if nOutputJsons == 0:
+            self.logger.error(f"No PhysioArchive files found in {physio_archive_dir}")
+            return
+        # Now merge outputs to single json file
+        keys_to_keep = ['datetime', 'ecg2_raw', 'ecg3_raw', 'ppg_raw', 'resp_raw']
+        output_dict = fIO.parseJsonToDictionary(output_jsons[0])
+        output_dict = {k: output_dict[k] for k in keys_to_keep}
+        if nOutputJsons > 1:
+            for iFile in output_jsons[1:]:
+                data = fIO.parseJsonToDictionary(iFile)
+                for k in keys_to_keep:
+                    output_dict[k].extend(data[k])
+        fIO.writeDictionaryToJSON(jsonOut, output_dict)
+        self.logger.info(f"Merged {nOutputJsons} PhysioArchive files into {jsonOut}")
+        for iTempJson in output_jsons:
+            os.remove(iTempJson)
+        return 0
+
+
+    def getPhysiologicalSignal_dict(self):
+        jsonFile = self.getPhysiologicalSignalJsonFile()
+        if os.path.isfile(jsonFile):
+            return fIO.parseJsonToDictionary(jsonFile)
+        return {}
+    
+
+    def getPhysiologicalSignal_series(self, seNumber, subsample=1):
+        """
+        Get the physiological signal series for a given series number.
+        Args:
+            seNumber (int): The series number to get the signal for
+            subsample (int): The subsample rate to use (default is 1 - milliseconds. Enter 1000 to return seconds).
+        Returns:
+            dict: A dictionary with the keys: ['datetime', 'ecg2_raw', 'ecg3_raw', 'ppg_raw', 'resp_raw']
+        """
+        if not os.path.isfile(self.getPhysiologicalSignalJsonFile()):
+            self.extractPhysioArchiveSignal()
+        full_dict = self.getPhysiologicalSignal_dict()
+        if len(full_dict) == 0:
+            return None
+        start_time = self.getStartTimeForSeriesN_HHMMSS(seNumber)
+        series_duration = self.getTimeTakenForSeriesN_s(seNumber)
+        start_time_dt = mi_utils.timeToDatetime(str(start_time), dateStr=self.getMetaDict()['StudyDate'])
+        end_time_dt = start_time_dt + datetime.timedelta(seconds=series_duration)
+        all_keys = list(full_dict.keys())
+        output_dict = {k: [] for k in all_keys}
+        for k1, iTime in enumerate(full_dict['datetime']):
+            iTime_dt = datetime.datetime.strptime(iTime, '%Y-%m-%d %H:%M:%S.%f')
+            if (iTime_dt >= start_time_dt) and (iTime_dt <= end_time_dt) and (k1 % subsample == 0):
+                for iKey in all_keys:
+                    output_dict[iKey].append(full_dict[iKey][k1])
+        return output_dict
 
 
     ### ----------------------------------------------------------------------------------------------------------------
@@ -497,6 +592,47 @@ def zfmrf_specific_actions(args):
                 print(f"Error deleting all but meta for {iSubj}: {e}")
                 continue
         
+    elif args.extractPhysioSignal:
+        subjList.reduceToExist()
+        for iSubj in subjList:
+            try:
+                iSubj.extractPhysioArchiveSignal(FORCE=args.FORCE)
+            except Exception as e:
+                print(f"Error extracting heart signal from PhysioArchive files for {iSubj}: {e}")
+                continue
+
+    elif args.TEST_PLOT_PHYSIO is not None:
+        # This is example code. One can replicate for own use case.
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+        subjList.reduceToExist()
+        for iSubj in subjList:
+            try:
+                phys_dict = iSubj.getPhysiologicalSignal_series(args.TEST_PLOT_PHYSIO, subsample=1000)
+                if len(phys_dict['datetime']) == 0:
+                    print(f"No physiological signal data found for {iSubj} - rerun cpGating")
+                    continue
+                print(phys_dict['datetime'][0], phys_dict['datetime'][-1])
+                datetime_dt = [datetime.datetime.strptime(iTime, '%Y-%m-%d %H:%M:%S.%f') for iTime in phys_dict['datetime']]
+                phys_dict['seconds'] = [(iTime - datetime_dt[0]).total_seconds() for iTime in datetime_dt]
+                print(phys_dict['seconds'][0], phys_dict['seconds'][-1])
+                all_keys = list(phys_dict.keys())
+                all_keys.remove('datetime')
+                all_keys.remove('seconds')
+                fig, axs = plt.subplots(len(all_keys), 1, figsize=(6, 8), sharex=True)
+                for k1, iKey in enumerate(all_keys):
+                    axs[k1].plot(phys_dict['seconds'], phys_dict[iKey], label=iKey)
+                    axs[k1].set_title(iKey)
+                fig.suptitle(f"{iSubj.subjID} - Series {args.TEST_PLOT_PHYSIO}")
+                plt.tight_layout()
+                fig_save_path = os.path.join(iSubj.getMetaDir(), f"{iSubj.subjID}_physio_plot.png")
+                plt.savefig(fig_save_path)
+                plt.close()
+                print(f"Saved plot {fig_save_path}")
+            except Exception as e:
+                print(f"Error getting physiological signal series for {iSubj}: {e}")
+                continue
 
 ### ====================================================================================================================
 ### ====================================================================================================================
@@ -510,8 +646,10 @@ def getArgGroup():
     groupZfmrf.add_argument('-qName', dest='qName', help='Query data by name', type=str, default=None)
     groupZfmrf.add_argument('-pTags', dest='pTags', help='Print Tags (except series)', action='store_true')
     groupZfmrf.add_argument('-cpGating', dest='cpGating', help='Copy gating data to study', action='store_true')
+    groupZfmrf.add_argument('-extractPhysioSignal', dest='extractPhysioSignal', help='Extract physiological signal from PhysioArchive files', action='store_true')
     groupZfmrf.add_argument('-cpSpectra', dest='cpSpectra', help='Copy spectra data to study', action='store_true')
     groupZfmrf.add_argument('-DEL', dest='delData', help='Delete all but META', action='store_true')
+    groupZfmrf.add_argument('-TEST_PLOT_PHYSIO', dest='TEST_PLOT_PHYSIO', help='TEST_PLOT_PHYSIO', type=int, default=None)
     groupZfmrf.add_argument('-pullDICOMS', dest='pullDicomsFromRemote', 
                             help='Pull DICOMS from remote archive - give archive directory', type=str, default=None)
     return groupZfmrf
