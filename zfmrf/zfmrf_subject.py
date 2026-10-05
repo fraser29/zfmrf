@@ -550,7 +550,7 @@ def zfmrf_specific_actions(args):
             try:
                 iSubj.copyGatingToStudy()   
             except Exception as e:
-                print(f"Error copying gating to study for {iSubj}: {e}")
+                iSubj.logger.exception(f"Error copying gating to study for {iSubj}")
                 continue
 
     elif args.cpSpectra:
@@ -559,7 +559,7 @@ def zfmrf_specific_actions(args):
             try:
                 iSubj.copySpectraToStudy()
             except Exception as e:
-                print(f"Error copying spectra to study for {iSubj}: {e}")
+                iSubj.logger.exception(f"Error copying spectra to study for {iSubj}")
                 continue
 
     elif args.pTags:
@@ -580,7 +580,7 @@ def zfmrf_specific_actions(args):
             try:
                 iSubj.getMRIDataFromArchive(args.pullDicomsFromRemote)
             except Exception as e:
-                print(f"Error pulling DICOMS from remote archive for {iSubj}: {e}")
+                iSubj.logger.exception(f"Error pulling DICOMS from remote archive for {iSubj}")
                 continue
         
     elif args.delData:
@@ -589,7 +589,7 @@ def zfmrf_specific_actions(args):
             try:
                 iSubj.delteAllButMeta()
             except Exception as e:
-                print(f"Error deleting all but meta for {iSubj}: {e}")
+                iSubj.logger.exception(f"Error deleting all but meta for {iSubj}")
                 continue
         
     elif args.extractPhysioSignal:
@@ -598,7 +598,7 @@ def zfmrf_specific_actions(args):
             try:
                 iSubj.extractPhysioArchiveSignal(FORCE=args.FORCE)
             except Exception as e:
-                print(f"Error extracting heart signal from PhysioArchive files for {iSubj}: {e}")
+                iSubj.logger.exception(f"Error extracting heart signal from PhysioArchive files for {iSubj}")
                 continue
 
     elif args.TEST_PLOT_PHYSIO is not None:

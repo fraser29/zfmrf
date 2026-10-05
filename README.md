@@ -23,6 +23,9 @@ ZfMRFSubject is a subclass of hurahura.mi_subject.AbstractSubject. One should su
 
 ## Changelog
 
+### 0.0.17
+- Send exceptions to logger instead of print
+
 ### 0.0.16
 - Added method to extract physiological signals from PhysioArchive files
 
